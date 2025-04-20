@@ -1,0 +1,141 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>구구단 문제 생성기</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; padding: 40px; background: #f9f9f9; color: #333; }
+    h1 { text-align: center; }
+    .lang-switch, .center-select, .checkboxes, .button-row, .footer { text-align: center; margin: 20px auto; }
+    .button-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .quiz-grid { display: grid; grid-template-columns: repeat(2, 1fr); max-width: 700px; margin: 0 auto; gap: 10px 20px; font-size: 17px; }
+    button, select {
+      background: #000; color: white; padding: 10px 20px; border: none;
+      border-radius: 6px; font-size: 16px; display: inline-flex; align-items: center; gap: 6px;
+      transition: background 0.3s ease; cursor: pointer;
+    }
+    button:hover, select:hover { background: #222; }
+    .footer img { height: 24px; vertical-align: middle; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <h1 id="pageTitle">구구단 문제 생성기</h1>
+
+  <div class="lang-switch">
+    <button onclick="toggleLanguage()">한국어 / EN</button>
+  </div>
+
+  <div class="checkboxes">
+    <p id="selectPrompt">원하는 단을 선택하세요:</p>
+    <label><input type="checkbox" value="2">2단</label>
+    <label><input type="checkbox" value="3">3단</label>
+    <label><input type="checkbox" value="4">4단</label>
+    <label><input type="checkbox" value="5">5단</label>
+    <label><input type="checkbox" value="6">6단</label>
+    <label><input type="checkbox" value="7">7단</label>
+    <label><input type="checkbox" value="8">8단</label>
+    <label><input type="checkbox" value="9">9단</label>
+  </div>
+
+  <div class="center-select">
+    <select id="questionCount">
+      <option value="20">문제 수: 20</option>
+      <option value="30">문제 수: 30</option>
+      <option value="40">문제 수: 40</option>
+    </select>
+  </div>
+
+  <div class="button-row">
+    <button onclick="generateQuestions()" id="generateBtn"><i class="fas fa-magic"></i> 문제 생성하기</button>
+    <button onclick="showAnswers()" id="showAnswersBtn"><i class="fas fa-eye"></i> 정답 보기</button>
+    <button onclick="downloadPDF(false)" id="downloadQuizBtn"><i class="fas fa-file-download"></i> 문제 PDF</button>
+    <button onclick="downloadPDF(true)" id="downloadAnswerBtn"><i class="fas fa-file-alt"></i> 정답 PDF</button>
+  </div>
+
+  <div id="quizTitle"></div>
+  <div class="quiz-grid" id="quizList"></div>
+
+  <div class="footer">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/7/73/Flat_tick_icon.svg" alt="logo" />
+    Made with ❤️ by <strong>FunEdus</strong>
+  </div>
+
+  <script>
+    let problems = [];
+    let isEnglish = false;
+
+    function toggleLanguage() {
+      isEnglish = !isEnglish;
+      document.getElementById("pageTitle").textContent = isEnglish ? "Multiplication Worksheet Generator" : "구구단 문제 생성기";
+      document.getElementById("selectPrompt").textContent = isEnglish ? "Select times tables:" : "원하는 단을 선택하세요:";
+      document.getElementById("generateBtn").innerHTML = `<i class='fas fa-magic'></i> ${isEnglish ? "Generate Questions" : "문제 생성하기"}`;
+      document.getElementById("showAnswersBtn").innerHTML = `<i class='fas fa-eye'></i> ${isEnglish ? "Show Answers" : "정답 보기"}`;
+      document.getElementById("downloadQuizBtn").innerHTML = `<i class='fas fa-file-download'></i> ${isEnglish ? "Download Worksheet PDF" : "문제 PDF"}`;
+      document.getElementById("downloadAnswerBtn").innerHTML = `<i class='fas fa-file-alt'></i> ${isEnglish ? "Download Answer PDF" : "정답 PDF"}`;
+    }
+
+    function generateQuestions() {
+      const selectedDans = Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
+      const count = parseInt(document.getElementById("questionCount").value);
+      const list = document.getElementById("quizList");
+      const title = document.getElementById("quizTitle");
+      list.innerHTML = "";
+      title.innerHTML = "";
+      problems = [];
+
+      if (selectedDans.length === 0) {
+        alert(isEnglish ? "Please select at least one times table." : "최소 하나 이상의 단을 선택해주세요.");
+        return;
+      }
+
+      for (let i = 0; i < count; i++) {
+        const a = selectedDans[Math.floor(Math.random() * selectedDans.length)];
+        const b = Math.floor(Math.random() * 9) + 1;
+        problems.push({ a, b });
+      }
+
+      const label = isEnglish ? `Times Table Practice (${selectedDans.join(", ")})` : `구구단 문제 (${selectedDans.join(", ")}단 문제)`;
+      title.textContent = label;
+
+      problems.forEach((p, i) => {
+        const item = document.createElement("div");
+        item.textContent = `${i + 1}. ${p.a} x ${p.b} = ______`;
+        list.appendChild(item);
+      });
+    }
+
+    function showAnswers() {
+      const list = document.getElementById("quizList");
+      list.innerHTML = "";
+      problems.forEach((p, i) => {
+        const item = document.createElement("div");
+        item.textContent = `${i + 1}. ${p.a} x ${p.b} = ${p.a * p.b}`;
+        list.appendChild(item);
+      });
+    }
+
+    async function downloadPDF(includeAnswers) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(18);
+      const title = includeAnswers ? (isEnglish ? "Answer Sheet" : "구구단 정답지") : (isEnglish ? "Multiplication Worksheet" : "구구단 문제");
+      doc.text(title, 20, 20);
+      doc.setFontSize(14);
+      let y = 30;
+      for (let i = 0; i < problems.length; i++) {
+        const p = problems[i];
+        const text = `${i + 1}. ${p.a} x ${p.b} = ${includeAnswers ? p.a * p.b : "______"}`;
+        const x = i % 2 === 0 ? 20 : 110;
+        doc.text(text, x, y);
+        if (i % 2 === 1) y += 10;
+      }
+      const filename = includeAnswers ? (isEnglish ? "answers.pdf" : "정답지.pdf") : (isEnglish ? "worksheet.pdf" : "문제지.pdf");
+      doc.save(filename);
+    }
+  </script>
+</body>
+</html>
